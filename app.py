@@ -21,7 +21,10 @@ load_dotenv()
 # =========================
 # LANGFUSE CALLBACK
 # =========================
-langfuse_handler = CallbackHandler()
+import os from langfuse.callback import CallbackHandler 
+langfuse_handler = CallbackHandler( public_key=os.getenv("LANGFUSE_PUBLIC_KEY"), s
+                                   ecret_key=os.getenv("LANGFUSE_SECRET_KEY"), 
+                                   host=os.getenv("LANGFUSE_HOST") )
 # =========================
 # STREAMLIT UI
 # =========================
