@@ -9,9 +9,15 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.messages import HumanMessage, AIMessage
 
 # =========================
-# LANGFUSE IMPORTS
+# LANGFUSE IMPORTS (optional)
 # =========================
-from langfuse.langchain import CallbackHandler
+try:
+    from langfuse.langchain import CallbackHandler
+
+    _HAS_LANGFUSE = True
+except Exception:
+    CallbackHandler = None
+    _HAS_LANGFUSE = False
 
 # =========================
 # LOAD ENV
@@ -21,10 +27,21 @@ load_dotenv()
 # =========================
 # LANGFUSE CALLBACK
 # =========================
-import os from langfuse.callback import CallbackHandler 
-langfuse_handler = CallbackHandler( public_key=os.getenv("LANGFUSE_PUBLIC_KEY"), s
-                                   ecret_key=os.getenv("LANGFUSE_SECRET_KEY"), 
-                                   host=os.getenv("LANGFUSE_HOST") )
+if _HAS_LANGFUSE and CallbackHandler is not None:
+    langfuse_handler = CallbackHandler(
+        public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+        secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+        host=os.getenv("LANGFUSE_HOST"),
+    )
+else:
+    langfuse_handler = None
+    # If running in Streamlit, show an informational message about Langfuse not being available
+    try:
+        st = globals().get("st")
+        if st is not None:
+            st.info("Langfuse not installed or not configured — traces will not be sent.")
+    except Exception:
+        pass
 # =========================
 # STREAMLIT UI
 # =========================
@@ -108,14 +125,16 @@ chain = prompt_template | llm | output_parser
 # =========================
 def generate_sql(question, schema):
 
+    invoke_config = {}
+    if langfuse_handler:
+        invoke_config["callbacks"] = [langfuse_handler]
+
     response = chain.invoke(
         {
             "input": question,
             "schema": schema,
         },
-        config={
-            "callbacks": [langfuse_handler]
-        }
+        config=invoke_config,
     )
 
     memory.add_messages([
